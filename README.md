@@ -88,19 +88,6 @@
 
 ---
 
-## 🔤 Windows 官方生僻字库补全 (可选)
-
-如果遇到部分极端古汉字/生僻字（如 CJK Ext-B 区字符 `𥙰`）显示为带叉方框豆腐块，可以使用提供的字体脚本为 ChromeOS 注入 Windows 官方全量字库：
-
-```bash
-# 详细步骤请参考 docs/ 目录下的脚本与说明：
-# - docs/fix-fonts.sh (ChromeOS 宿主生僻字自动回退配置)
-# - docs/install-linux-fonts.sh (Crostini Linux 虚拟机字体注入)
-# - docs/fix-terminal-font.sh (Linux 终端等宽字距修复)
-```
-
----
-
 ## 🛠️ 项目结构与编译机制
 
 ```text
