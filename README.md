@@ -19,7 +19,7 @@
 > - **[FydeOS/fydeRhythm](https://github.com/FydeOS/fydeRhythm)** —— 真文韵输入法扩展，本项目的扩展基座（BSD 3-Clause）
 > - **[amzxyz/rime-wanxiang](https://github.com/amzxyz/rime_wanxiang)** —— 万象拼音输入方案，本项目的方案与词库来源（CC-BY 4.0）
 >
-> 本项目是站在以上两个开源项目的肩膀上完成的整合与增强，所有荣誉归于上游作者。若本项目对你有帮助，请也顺手给上游项目点个 Star！
+> 本项目是站在以上两个开源项目的肩膀上完成的整合与增强，若本项目对你有帮助，请也顺手给上游项目点个 Star！
 >
 > 本项目与 FydeOS / Fyde Innovations、amzxyz 无隶属关系且未获其背书；「真文韵」「万象拼音」等名称仅用于描述来源，详见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
 
