@@ -1,0 +1,217 @@
+# RELEASE NOTES · v1.0.0（真文韵输入法增强版 · 首个发布版本）
+
+> 发布日期：2026-10-01
+> 基线：[FydeOS/fydeRhythm](https://github.com/FydeOS/fydeRhythm) v3.1.0（真文韵）+ [amzxyz/rime-wanxiang](https://github.com/amzxyz/rime_wanxiang) 预编译万象方案
+> 扩展包：`fydeRhythm-enhanced.zip`（18 MB，37 文件） · 方案包：`万象拼音方案-在真文韵设置页导入这个.zip`（54 MB，解压落盘约 136 MB，25 文件）
+
+---
+
+## ⚠️ 测试环境声明（重要）
+
+| 项目 | 内容 |
+|:---|:---|
+| 测试机型 | **Acer C713** |
+| 系统版本 | **ChromeOS 144.0.7559.262** |
+| 兼容性范围 | **仅上述环境实测通过，未做其他机器和系统的兼容性测试** |
+
+其他 ChromeOS 版本、Chrome 桌面版（Windows/macOS/Linux）、其他品牌 Chromebook 均**未经测试**，能否正常工作未知。横排候选窗渲染与 Tab 转发依赖 `chrome.input.ime` API 的具体行为，不同系统版本表现可能不同。遇到问题欢迎提 Issue（请附机型与系统版本）。
+
+---
+
+## 一、与原版真文韵（fydeRhythm 3.1.0）的完整区别
+
+### 1. 候选窗横排渲染（原版横排是坏的）
+
+原版把候选词文本放进 `candidate` 字段渲染，而 ChromeOS 横排模式下该字段存在测量为 0 像素的底层缺陷，导致候选词文字隐形（竖排正常）。本版：
+
+- 把**候选词实际文本移到 `annotation` 字段渲染**（横排时 `candidate` 置空），绕开测量缺陷，文字正常显示；
+- `setCandidates` 与 `setCandidateWindowProperties` 的调用**时序重构**，横排时关闭页码辅助文本、`windowPosition` 改为 `cursor`、`pageSize` 截断到实际候选数，消除空槽位与多余空白；
+- 候选窗方向改为**运行时动态**（`vertical:__zwyVertical`，原版硬编码竖排），由设置页开关驱动。
+
+### 2. Tab 辅码反查（搜狗同款部首辅码）
+
+- 原版特殊键码表**缺少 Tab**，按 Tab 直接切出输入法（日志报 `Unhandled key Tab`）；本版补入 `Tab:65289`；
+- 在会话互斥锁内的 `processKey` 前拦截 Tab：仅当「已开辅码 + 当前方案为万象拼音 + 无修饰键」时，把 Tab 转成反引号 `` ` ``，触发万象**原生**反查模式（`reverse_lookup_filter@radical_reverse_lookup` + `lua_filter@*super_lookup`）；
+- 防误触：preedit 已含 `` ` `` 时再按 Tab 直接吞掉，不会进入意外造词状态；`Alt+Tab` / `Ctrl+Tab` / 空闲 Tab 带修饰键时完全放行给系统；
+- 部首辅码按**读音**输入：金 `j/ji/jin`、木 `m/mu`、水 `s/sh/shui`、草 `c/ca/cao`，支持全拼、声母、缩写（如 `jz`）等多种形式；单字与词组均支持（词组走递归逐字匹配）；
+- 示例：`zhen` → `Tab` → `jin` → 带「钅/金」的字（镇、针…）置顶，空格上屏。
+
+### 3. 选词体验
+
+- **数字键选词**：主方案字母表中剔除数字（原版数字参与编码），`1`–`9` 直接选择对应候选；
+- **左右方向键选词**：有候选时 `←`/`→` 在候选间移动（注入 `has_menu` 下 `Left→Up`、`Right→Down` 键绑定）；
+- **点击候选直接上屏**：鼠标/触屏点选候选后自动补发空格键确认，不用再按一次空格。
+
+### 4. 成对标点自动补全（搜狗同款）
+
+- 输入 `《` `【` `（` `“` `‘` `「` `『` 自动补出右半边，光标自动居中（如 `《|》`）；
+- 补全后输入对应的右标点，自动跳出右侧，不重复输出；
+- 误按左标点时，**一次 Backspace 成对删除**左右两边（拦截退格键 + `deleteSurroundingText`）。
+
+### 5. 中文标点映射增强
+
+| 按键 | 输出（原版 → 本版） |
+|:---|:---|
+| `/`、`\` | → **`、`**（顿号） |
+| `$` | → **`￥`** |
+| `~` | → **`～`** |
+
+（半角、全角两套 punctuator 均已覆盖。）
+
+### 6. 引擎参数运行时覆盖（`__zwyApply`，方案加载时注入）
+
+| 设置项 | 作用 | 默认 |
+|:---|:---|:---|
+| 自动纠错 | `translator/enable_correction`，相邻键误触自动给出正确候选 | 开 |
+| 默认简繁 | 每次引擎启动重置 `zh_trad` 开关为简体/繁体/跟随方案 | 跟随方案 |
+| emoji 候选 | `emoji` 开关，开启后候选词旁附带 emoji | 开 |
+| 全半角默认 | `full_shape` 开关，全角适合中文排版，半角适合代码混输 | 全角 |
+| 分号次选 | `;` 选第 2 候选、`'` 选第 3 候选 | 关 |
+| 方括号翻页 | `[` 上翻、`]` 下翻 | 关 |
+
+以上每项都有独立开关，改动即时写入存储，点「保存并应用」后引擎后台重载生效，设置页不闪退。
+
+### 7. 高级选项设置面板（新增 UI）
+
+- 位置：真文韵设置页**「字典包」卡片与「RIME 服务日志」卡片之间**，可展开；
+- 样式克隆原版卡片、字体与粉色主题，开关为与原版同款的胶囊开关；
+- 含上述全部开关 + 「候选窗方向（横排/竖排）」+ 「Tab 进入辅码反查」+ 「成对标点自动补全」+ 「恢复默认值」；
+- 保存走原版底部 Snackbar 通道（「设置已更改」→「保存并应用」）。
+
+### 8. 与商店版共存
+
+所有语言的扩展名/输入法名追加 **「（横排）」/(Horizontal)** 后缀，可与 Chrome 应用商店安装的原版真文韵并排安装、互不干扰。本项目自 v1.0.0 起采用独立版本号（基于上游 fydeRhythm 3.1.0）。
+
+### 9. 万象拼音方案包（随仓库分发的独立导入包）
+
+- 基于 amzxyz/rime-wanxiang 预编译（`wanxiang` 主方案 + `wanxiang_english` + `wanxiang_mixedcode` + `wanxiang_reverse` 反查词典），含 `shared/`（`super_lookup.lua` 辅码滤镜、`wanxiang.rime.lua`、opencc 词表）共 25 个文件；
+- 保留上游的 `` ` `` 反查与部首辅码能力，是 Tab 辅码功能的数据基础；
+- **许可与署名**：方案与词库遵循 **CC-BY 4.0**（方案仓库 [rime-wanxiang](https://github.com/amzxyz/rime_wanxiang)，词库仓库 [RIME-LMDG](https://github.com/amzxyz/RIME-LMDG)）；本项目**未修改方案与词库内容**，仅重新打包为设置页可导入的 zip，并按 CC-BY 要求在 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) 中注明来源与变更。
+
+---
+
+## 二、完整部署方法
+
+### 第 1 步：安装扩展
+
+1. 如果之前装过**任何版本的解包版真文韵**：先在 `chrome://extensions` 里移除（会清掉它的旧存储，避免旧配置捣乱）；
+2. 下载并解压 `fydeRhythm-enhanced.zip`，得到 `fydeRhythm-enhanced` 文件夹；
+3. 打开 `chrome://extensions`，开启右上角**「开发者模式」**；
+4. 点左上角**「加载已解压的扩展程序」**，选择 `fydeRhythm-enhanced` 文件夹；
+5. 确认扩展卡片版本号为 **1.0.0**；
+6. **装好后不要移动/重命名该文件夹**；日后替换过文件夹内容，必须在扩展卡片上点一次**重新加载（↻）**，否则 Chrome 继续运行旧代码。
+
+### 第 2 步：确认基础功能
+
+默认方案为「极光拼音」，先随便打几个字：候选窗（默认竖排）、自动纠错应正常。如需横排候选，在「字典包」与「RIME 服务日志」卡片之间的「高级选项」里把**「候选窗方向」切为【横排】**（实验选项，测试机型上实测可用）。
+
+### 第 3 步：导入万象方案
+
+1. 打开真文韵设置页（扩展详情页 → 「扩展程序选项」，或输入法托盘入口）；
+2. 方案列表里若有旧版万象，先删除；
+3. 点**「导入预编译方案」**，选择 `万象拼音方案-在真文韵设置页导入这个.zip`，等进度条走完（zip 约 54 MB，导入落盘约 136 MB）；
+4. 切换到「万象拼音」：**长按中/英键**弹出方案菜单选择，或用 `Ctrl+\`` 循环切换。
+
+### 第 4 步：开启 Tab 辅码
+
+1. 设置页 →「字典包」与「RIME 服务日志」卡片之间 → 展开**「高级选项」**；
+2. 打开**「Tab 进入辅码反查」**（仅万象拼音方案生效，其他方案按 Tab 仍是原版行为）；
+3. 底部弹出「设置已更改」→ 点**「保存并应用」**，引擎后台重载即生效。
+
+### 第 5 步：日常使用
+
+- `zhen` → `Tab` → `j`/`ji`/`jin` → 金字旁的「镇/针…」置顶 → 空格上屏；
+- 同理：木 `mu`、水 `shui`、草 `cao`、口 `kou`、火 `huo`、手 `shou`、心 `xin`……按部首读音即可；
+- 成对标点、数字选词、左右键选词、点击上屏装完即用，无需配置。
+
+---
+
+## 三、文件说明（File Manifest）
+
+### 仓库根目录
+
+| 文件/目录 | 说明 |
+|:---|:---|
+| `README.md` | 项目总览、特性、安装指南 |
+| `RELEASE_NOTES.md` | 本文件：发布版本说明 |
+| `LICENSE` | 本仓库主许可证（BSD 3-Clause，承自 fydeRhythm） |
+| `LICENSE-BSD3-fydeRhythm` | 上游 fydeRhythm 的 BSD-3 原文 |
+| `LICENSE-CC-BY-4.0-wanxiang` | 上游万象方案的 CC-BY-4.0 原文 |
+| `THIRD-PARTY-NOTICES.md` | 第三方组件与许可证总览 |
+| `extension/` | 增强版扩展完整目录（37 文件），可直接「加载已解压的扩展程序」 |
+| `schema-src/` | 万象方案资产：`shared/`（Lua 滤镜、opencc 词表，进 git）；`build/`（预编译 RIME 二进制，不进 git，随方案导入包分发） |
+| `release/` | 交付 zip（不进 git，作为 GitHub Release 附件上传） |
+| `scripts/` | 构建与补丁工具（见下） |
+| `docs/` | 辅助脚本与文档（见下） |
+
+### `extension/` 关键文件
+
+| 文件 | 说明 |
+|:---|:---|
+| `manifest.json` | MV3 清单，版本 1.0.0 |
+| `background.js` | IME 核心服务（含全部运行时补丁：横排渲染、Tab 转发、成对标点、设置覆盖等） |
+| `options.html` + `chunks/` | 设置页（内嵌高级选项面板） |
+| `zwy-panel.js` | 高级选项面板组件 |
+| `inputview.html` | 虚拟键盘页（沿袭原版路径，兼容系统缓存） |
+| `rime_emscripten.wasm` | librime WASM 引擎 |
+| `builtin/` | 内置极光拼音方案 |
+| `_locales/` | 多语言文案（名称已加「（横排）」后缀） |
+
+### `scripts/`
+
+| 文件 | 说明 |
+|:---|:---|
+| `patch-final.js` | 核心补丁脚本：输入原版 CRX 解包目录，自动完成第「一」节全部 background.js 补丁、面板嵌入、版本号与多语言改名。用法：`node patch-final.js <原版解包目录>` |
+| `build-import-zip.cjs` | 用 `schema-src/` 重打万象方案导入包并做导入校验。用法：`cd scripts && npm install && node build-import-zip.cjs` |
+| `verify-import.cjs` | 与扩展同款导入逻辑的 Node 版（esbuild 打包），供上条脚本校验 |
+| `zwy-panel.js` | 面板源文件（`patch-final.js` 会复制它进扩展目录） |
+| `package.json` | scripts 目录的 npm 依赖（jszip） |
+
+### `docs/`
+
+| 文件 | 说明 |
+|:---|:---|
+| `安装与维护说明.md` | 随交付包附的使用与维护说明 |
+| `fix-fonts.sh` | ChromeOS 宿主生僻字自动回退配置（CJK Ext-B 豆腐块修复） |
+| `install-linux-fonts.sh` | Crostini Linux 虚拟机字体注入 |
+| `fix-terminal-font.sh` | Linux 终端等宽字距过宽修复（中文字体污染 monospace 回退） |
+
+### `release/`（GitHub Release 附件）
+
+| 文件 | 说明 |
+|:---|:---|
+| `fydeRhythm-enhanced.zip` | 增强版扩展打包（18 MB），解压后加载 |
+| `万象拼音方案-在真文韵设置页导入这个.zip` | 万象拼音预编译方案（54 MB），**在真文韵设置页里导入**，一次即可 |
+
+---
+
+## 四、已知限制
+
+- 横排候选窗由系统原生渲染，样式（字体、配色）跟随系统，无法自定义候选框皮肤；
+- 「Tab 进入辅码反查」仅在**万象拼音**方案下生效；
+- 高级选项中的「横排」在个别应用（如某些 Crostini 终端）里如遇不显示，可切回竖排对比排查；
+- 未做除 Acer C713 / ChromeOS 144.0.7559.262 之外的环境测试（见顶部声明）。
+
+---
+
+## 五、致谢（Acknowledgments）
+
+### 上游源仓库
+
+本项目完全建立在以下两个开源项目之上，向原作者致以诚挚感谢：
+
+1. **[FydeOS/fydeRhythm](https://github.com/FydeOS/fydeRhythm)** —— 真文韵输入法扩展
+   - 本项目的扩展基座：RIME WASM 引擎封装、设置页、方案管理均来自真文韵；
+   - 感谢 FydeOS 团队将其开源（BSD 3-Clause）。
+
+2. **[amzxyz/rime-wanxiang](https://github.com/amzxyz/rime_wanxiang)** —— 万象拼音输入方案
+   - 本项目的方案与词库来源：主方案、反查词典、`super_lookup.lua` 辅码滤镜、opencc 词表均出自万象；
+   - 感谢 amzxyz 的持续维护与开源（CC-BY 4.0）。
+
+若本项目对你有帮助，请也顺手给上面两个项目点个 Star。
+
+### 开发分工
+
+- **主力编写**：Gemini 3.8 Flash —— 底层机制研究、逆向补丁注入、算法适配与全量测试；
+- **辅助参与**：Gemini 3.7 Flash、GLM 5.3 Flash；
+- **人工**：需求提出、真机实测（Acer C713）与验收。

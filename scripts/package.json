@@ -1,0 +1,8 @@
+{
+  "name": "fyderhythm-enhanced-scripts",
+  "private": true,
+  "description": "fydeRhythm-Enhanced 仓库工具脚本（打方案包 / 补丁扩展）",
+  "dependencies": {
+    "jszip": "^3.10.1"
+  }
+}

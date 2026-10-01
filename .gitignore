@@ -1,0 +1,22 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.bak
+.vscode/
+.idea/
+
+# Build artifacts
+node_modules/
+dist/
+build/
+.output/
+*.log
+*.tmp
+temp/
+
+# 预编译 RIME 二进制（.bin）不进 git，随 release 里的方案导入包分发
+schema-src/build/
+
+# release 下的 zip 体量大（54MB+），发布时作为 GitHub Release 附件上传，不进 git
+release/*.zip
