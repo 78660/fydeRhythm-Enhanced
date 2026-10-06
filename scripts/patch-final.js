@@ -88,6 +88,10 @@ const helper = [
   '  e.punctuator.full_shape["$"]="￥";',
   '  e.punctuator.full_shape["~"]="～";',
   '}',
+  'if(t.pairPunct!==false&&e.punctuator){',
+  '  if(e.punctuator.half_shape){e.punctuator.half_shape[\'"\']="“";e.punctuator.half_shape["\'"]="‘";}',
+  '  if(e.punctuator.full_shape){e.punctuator.full_shape[\'"\']="“";e.punctuator.full_shape["\'"]="‘";}',
+  '}',
   '}catch(ex){console.error("__zwyApply failed",ex)}}',
 ].join('\n');
 bg = helper + '\n' + bg;
@@ -186,7 +190,7 @@ fs.writeFileSync(path.join(dir, 'zwy-panel.js'), fs.readFileSync(jsPath, 'utf8')
 // 2.5 version stamp
 const manPath = path.join(dir, 'manifest.json');
 const man = JSON.parse(fs.readFileSync(manPath, 'utf8'));
-man.version = '1.0.0';
+man.version = '1.0.1';
 man.author = '78660';
 fs.writeFileSync(manPath, JSON.stringify(man, null, 2));
 
