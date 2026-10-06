@@ -111,7 +111,7 @@ bg = bg.replace(tabAnchor, 'Qc={Tab:65289,ArrowUp:65362,');
 
 // 1f. Reorder and adapt CandidateWindow for robust horizontal rendering
 const cwOld = 'if(w.menu.candidates.length>0){if(p.push(this.setCandidateWindowProperties(n,{visible:!0,cursorVisible:!0,auxiliaryTextVisible:!0,pageSize:w.menu.pageSize,auxiliaryText:chrome.i18n.getMessage("candidate_page",(w.menu.pageNumber+1).toString())+(w.menu.isLastPage?chrome.i18n.getMessage("candidate_page_last"):""),windowPosition:"composition",vertical:__zwyVertical})),this.context!=null){const _=this.context.contextID;p.push(new Promise((x,b)=>{chrome.input.ime.setCandidates({contextID:_,candidates:w.menu.candidates.map((C,F)=>({candidate:C.text,id:F,label:w.selectLabels[F]||(F+1).toString()}))},this.imeCallDone("setCandidates",x,b))})),p.push(new Promise((x,b)=>{chrome.input.ime.setCursorPosition({contextID:_,candidateID:w.menu.highlightedCandidateIndex},this.imeCallDone("setCursorPosition",x,b))}))}}';
-const cwNew = 'if(w.menu.candidates.length>0){if(this.context!=null){const _=this.context.contextID;p.push(new Promise((x,b)=>{chrome.input.ime.setCandidates({contextID:_,candidates:w.menu.candidates.map((C,F)=>({candidate:__zwyVertical?C.text:\"\",id:F,label:w.selectLabels[F]||(F+1).toString(),annotation:__zwyVertical?(C.comment||\"\"):((F===0&&this.__zwyPinyinWindow&&this.__zwyPreedit?this.__zwyPreedit+\" | \":\"\")+(F+1)+\". \"+C.text)}))},this.imeCallDone(\"setCandidates\",x,b))})),p.push(new Promise((x,b)=>{chrome.input.ime.setCursorPosition({contextID:_,candidateID:w.menu.highlightedCandidateIndex},this.imeCallDone(\"setCursorPosition\",x,b))}))}p.push(this.setCandidateWindowProperties(n,{visible:!0,cursorVisible:!0,auxiliaryTextVisible:__zwyVertical?(this.__zwyPinyinWindow?!!this.__zwyPreedit:!0):!1,pageSize:__zwyVertical?w.menu.pageSize:Math.max(1,Math.min(w.menu.pageSize,w.menu.candidates.length)),auxiliaryText:__zwyVertical?(this.__zwyPinyinWindow?(this.__zwyPreedit||void 0):(chrome.i18n.getMessage(\"candidate_page\",(w.menu.pageNumber+1).toString())+(w.menu.isLastPage?chrome.i18n.getMessage(\"candidate_page_last\"):\"\"))):void 0,windowPosition:this.__zwyPinyinWindow?\"cursor\":__zwyVertical?\"composition\":\"cursor\",vertical:__zwyVertical}))}';
+const cwNew = 'if(w.menu.candidates.length>0){const P=(this.__zwyPinyinWindow&&!__zwyVertical&&this.__zwyPreedit)?[{candidate:\"\",id:-1,label:\"\",annotation:this.__zwyPreedit}]:[];if(this.context!=null){const _=this.context.contextID;p.push(new Promise((x,b)=>{chrome.input.ime.setCandidates({contextID:_,candidates:P.concat(w.menu.candidates.map((C,F)=>({candidate:__zwyVertical?C.text:\"\",id:F,label:w.selectLabels[F]||(F+1).toString(),annotation:__zwyVertical?(C.comment||\"\"):((F+1)+\". \"+C.text)})))},this.imeCallDone(\"setCandidates\",x,b))})),p.push(new Promise((x,b)=>{chrome.input.ime.setCursorPosition({contextID:_,candidateID:w.menu.highlightedCandidateIndex},this.imeCallDone(\"setCursorPosition\",x,b))}))}p.push(this.setCandidateWindowProperties(n,{visible:!0,cursorVisible:!0,auxiliaryTextVisible:__zwyVertical?(this.__zwyPinyinWindow?!!this.__zwyPreedit:!0):!1,pageSize:__zwyVertical?w.menu.pageSize:Math.max(1,Math.min(w.menu.pageSize+P.length,w.menu.candidates.length+P.length)),auxiliaryText:__zwyVertical?(this.__zwyPinyinWindow?(this.__zwyPreedit||void 0):(chrome.i18n.getMessage(\"candidate_page\",(w.menu.pageNumber+1).toString())+(w.menu.isLastPage?chrome.i18n.getMessage(\"candidate_page_last\"):\"\"))):void 0,windowPosition:this.__zwyPinyinWindow?\"cursor\":__zwyVertical?\"composition\":\"cursor\",vertical:__zwyVertical}))}';
 
 if (bg.includes(cwOld)) {
   bg = bg.replace(cwOld, cwNew);
@@ -171,6 +171,12 @@ bg = bg.replace(compAnchor, 'setComposition(n){if(this.__zwyPinyinWindow&&n){thi
 
 write('background.js', bg);
 
+// 1m. Candidate click: ignore the fake pinyin header row (id = -1).
+const clickOld = 'l=="left"?(self.controller.selectCandidate(o).catch(h=>{console.log("Stale candidate click ignored:",h)}),self.controller.lastRightClickItem=-1):l=="right"&&self.controller.rightClick(o)';
+const clickNew = 'l=="left"?(o<0?console.log("[zwy] pinyin row click ignored"):(self.controller.selectCandidate(o).catch(h=>{console.log("Stale candidate click ignored:",h)}),self.controller.lastRightClickItem=-1)):l=="right"&&o>=0&&self.controller.rightClick(o)';
+if (bg.split(clickOld).length - 1 !== 1) { console.error('ABORT: click anchor not found/unique'); process.exit(1); }
+bg = bg.replace(clickOld, clickNew);
+
 // ---- verify ----
 const after = read('background.js');
 console.log('vertical dynamic   :', (after.match(/vertical:__zwyVertical/g) || []).length, '(want 2)');
@@ -179,6 +185,8 @@ console.log('helper prepended   :', after.startsWith('var __zwyVertical=true;'))
 console.log('call injected      :', after.includes('__zwyApply(h,n);'));
 console.log('tab binding        :', after.includes('tabFuzhuma===true'));
 console.log('pinyin window      :', after.includes('__zwyPinyinWindow') && after.includes('__zwyPreedit'));
+console.log('pinyin header row  :', after.includes('id:-1,label:\"\",annotation:this.__zwyPreedit'));
+console.log('click guard        :', after.includes('pinyin row click ignored'));
 
 // 1k. Fuzzy-pinyin card: show for every schema (imported schemas like wanxiang
 // lack the fuzzy_pinyin flag, which hid the card entirely).
@@ -209,7 +217,7 @@ fs.writeFileSync(path.join(dir, 'zwy-panel.js'), fs.readFileSync(jsPath, 'utf8')
 // 2.5 version stamp
 const manPath = path.join(dir, 'manifest.json');
 const man = JSON.parse(fs.readFileSync(manPath, 'utf8'));
-man.version = '1.0.3';
+man.version = '1.0.4';
 man.author = '78660';
 fs.writeFileSync(manPath, JSON.stringify(man, null, 2));
 
