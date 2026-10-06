@@ -99,7 +99,7 @@ bg = helper + '\n' + bg;
 // 1c. call the helper right after the schema yaml is parsed (statement position, unique anchor)
 const anchor = 'h=ga(l);if(this.schemaAlphabet=';
 if (bg.split(anchor).length - 1 !== 1) { console.error('ABORT: anchor not unique'); process.exit(1); }
-bg = bg.replace(anchor, 'h=ga(l);__zwyApply(h,n);this.__zwyTab=(n.tabFuzhuma===true);this.__zwySchema=(n.schema);if(this.schemaAlphabet=');
+bg = bg.replace(anchor, 'h=ga(l);__zwyApply(h,n);this.__zwyTab=(n.tabFuzhuma===true);this.__zwySchema=(n.schema);this.__zwyPinyinWindow=(n.pinyinInWindow!==false);if(this.schemaAlphabet=');
 write('background.js', bg);
 
 // 1d. Tab keycode: Tab was missing from the special-keys table, so it never
@@ -111,7 +111,7 @@ bg = bg.replace(tabAnchor, 'Qc={Tab:65289,ArrowUp:65362,');
 
 // 1f. Reorder and adapt CandidateWindow for robust horizontal rendering
 const cwOld = 'if(w.menu.candidates.length>0){if(p.push(this.setCandidateWindowProperties(n,{visible:!0,cursorVisible:!0,auxiliaryTextVisible:!0,pageSize:w.menu.pageSize,auxiliaryText:chrome.i18n.getMessage("candidate_page",(w.menu.pageNumber+1).toString())+(w.menu.isLastPage?chrome.i18n.getMessage("candidate_page_last"):""),windowPosition:"composition",vertical:__zwyVertical})),this.context!=null){const _=this.context.contextID;p.push(new Promise((x,b)=>{chrome.input.ime.setCandidates({contextID:_,candidates:w.menu.candidates.map((C,F)=>({candidate:C.text,id:F,label:w.selectLabels[F]||(F+1).toString()}))},this.imeCallDone("setCandidates",x,b))})),p.push(new Promise((x,b)=>{chrome.input.ime.setCursorPosition({contextID:_,candidateID:w.menu.highlightedCandidateIndex},this.imeCallDone("setCursorPosition",x,b))}))}}';
-const cwNew = 'if(w.menu.candidates.length>0){if(this.context!=null){const _=this.context.contextID;p.push(new Promise((x,b)=>{chrome.input.ime.setCandidates({contextID:_,candidates:w.menu.candidates.map((C,F)=>({candidate:__zwyVertical?C.text:\"\",id:F,label:w.selectLabels[F]||(F+1).toString(),annotation:__zwyVertical?(C.comment||\"\"):((F+1)+\". \"+C.text)}))},this.imeCallDone(\"setCandidates\",x,b))})),p.push(new Promise((x,b)=>{chrome.input.ime.setCursorPosition({contextID:_,candidateID:w.menu.highlightedCandidateIndex},this.imeCallDone(\"setCursorPosition\",x,b))}))}p.push(this.setCandidateWindowProperties(n,{visible:!0,cursorVisible:!0,auxiliaryTextVisible:__zwyVertical,pageSize:__zwyVertical?w.menu.pageSize:Math.max(1,Math.min(w.menu.pageSize,w.menu.candidates.length)),auxiliaryText:__zwyVertical?(chrome.i18n.getMessage(\"candidate_page\",(w.menu.pageNumber+1).toString())+(w.menu.isLastPage?chrome.i18n.getMessage(\"candidate_page_last\"):\"\")):void 0,windowPosition:__zwyVertical?\"composition\":\"cursor\",vertical:__zwyVertical}))}';
+const cwNew = 'if(w.menu.candidates.length>0){if(this.context!=null){const _=this.context.contextID;p.push(new Promise((x,b)=>{chrome.input.ime.setCandidates({contextID:_,candidates:w.menu.candidates.map((C,F)=>({candidate:__zwyVertical?C.text:\"\",id:F,label:w.selectLabels[F]||(F+1).toString(),annotation:__zwyVertical?(C.comment||\"\"):((F+1)+\". \"+C.text)}))},this.imeCallDone(\"setCandidates\",x,b))})),p.push(new Promise((x,b)=>{chrome.input.ime.setCursorPosition({contextID:_,candidateID:w.menu.highlightedCandidateIndex},this.imeCallDone(\"setCursorPosition\",x,b))}))}p.push(this.setCandidateWindowProperties(n,{visible:!0,cursorVisible:!0,auxiliaryTextVisible:this.__zwyPinyinWindow?!!this.__zwyPreedit:__zwyVertical,pageSize:__zwyVertical?w.menu.pageSize:Math.max(1,Math.min(w.menu.pageSize,w.menu.candidates.length)),auxiliaryText:this.__zwyPinyinWindow?(this.__zwyPreedit||void 0):__zwyVertical?(chrome.i18n.getMessage(\"candidate_page\",(w.menu.pageNumber+1).toString())+(w.menu.isLastPage?chrome.i18n.getMessage(\"candidate_page_last\"):\"\")):void 0,windowPosition:this.__zwyPinyinWindow?\"cursor\":__zwyVertical?\"composition\":\"cursor\",vertical:__zwyVertical}))}';
 
 if (bg.includes(cwOld)) {
   bg = bg.replace(cwOld, cwNew);
@@ -163,6 +163,12 @@ if (bg.includes(feedOld)) {
   process.exit(1);
 }
 
+// 1j. Sogou-style pinyin-in-window: capture the preedit into __zwyPreedit and
+// keep the inline composition empty when enabled (settings.pinyinInWindow).
+const compAnchor = 'setComposition(n){return new Promise((t,s)=>{';
+if (bg.split(compAnchor).length - 1 !== 1) { console.error('ABORT: setComposition anchor not found/unique'); process.exit(1); }
+bg = bg.replace(compAnchor, 'setComposition(n){if(this.__zwyPinyinWindow&&n){this.__zwyPreedit=n.text||"";if(n.text)n={contextID:n.contextID,cursor:0,selectionStart:0,selectionEnd:0,text:""}}return new Promise((t,s)=>{');
+
 write('background.js', bg);
 
 // ---- verify ----
@@ -172,6 +178,19 @@ console.log('Tab keycode added  :', after.includes('Qc={Tab:65289,'));
 console.log('helper prepended   :', after.startsWith('var __zwyVertical=true;'));
 console.log('call injected      :', after.includes('__zwyApply(h,n);'));
 console.log('tab binding        :', after.includes('tabFuzhuma===true'));
+console.log('pinyin window      :', after.includes('__zwyPinyinWindow') && after.includes('__zwyPreedit'));
+
+// 1k. Fuzzy-pinyin card: show for every schema (imported schemas like wanxiang
+// lack the fuzzy_pinyin flag, which hid the card entirely).
+const optChunk = fs.readdirSync(path.join(dir, 'chunks')).find((f) => /^options-.*\.js$/.test(f));
+if (!optChunk) { console.error('ABORT: options chunk not found'); process.exit(1); }
+let oc = read(path.join('chunks', optChunk));
+const fuzzyNeedle = '?.fuzzy_pinyin&&';
+const fuzzyCount = oc.split(fuzzyNeedle).length - 1;
+if (fuzzyCount !== 1) { console.error('ABORT: fuzzy gate anchor count ' + fuzzyCount); process.exit(1); }
+oc = oc.split(fuzzyNeedle).join('?.fuzzy_pinyin!==!1&&');
+write(path.join('chunks', optChunk), oc);
+console.log('fuzzy gate opened  :', path.join('chunks', optChunk));
 console.log('panel embedded     :', read('options.html').includes('zwy-panel.js'));
 console.log('panel js           :', fs.existsSync(path.join(dir, 'zwy-panel.js')));
 console.log('no stray panel     :', !fs.existsSync(path.join(dir, 'zwy-panel.html')));
@@ -190,7 +209,7 @@ fs.writeFileSync(path.join(dir, 'zwy-panel.js'), fs.readFileSync(jsPath, 'utf8')
 // 2.5 version stamp
 const manPath = path.join(dir, 'manifest.json');
 const man = JSON.parse(fs.readFileSync(manPath, 'utf8'));
-man.version = '1.0.1';
+man.version = '1.0.2';
 man.author = '78660';
 fs.writeFileSync(manPath, JSON.stringify(man, null, 2));
 

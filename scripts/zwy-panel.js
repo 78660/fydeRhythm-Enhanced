@@ -35,6 +35,7 @@
     $('zwy-fullShape').value = s.fullShape || DEFAULTS.fullShape;
     $('zwy-semicolonSecond').checked = s.semicolonSecond === true;
     $('zwy-bracketPaging').checked = s.bracketPaging === true;
+    $('zwy-pinyinWindow').checked = s.pinyinInWindow !== false;
   }
 
   function reloadEngine() {
@@ -181,6 +182,12 @@
       mkSelect('zwy-horizontal', [['off', '竖排（默认）'], ['on', '横排（实验）']])
     );
     mkRow(
+      'zwy-pinyinWindow',
+      '拼音进候选框（搜狗式）',
+      '打字时文本框内不显示拼音，拼音串显示在候选窗顶部，选完候选词汉字直接上屏。个别应用若出现定位异常，关闭此开关可恢复内联显示。',
+      mkSwitch('zwy-pinyinWindow')
+    );
+    mkRow(
       'zwy-tabFuzhuma',
       'Tab 进入辅码反查（仅万象拼音方案）',
       '开启后，文本框里按 Tab：清空当前输入并进入部首辅码反查（等同原生 \u0060），输 jn（金）、mu（木）或拆字、笔画查字。需要 Tab 的原生功能（切焦点）时，关闭此开关或切换方案即可。「拼音后直接跟辅码筛选」是万象 PRO 词库级功能。',
@@ -291,7 +298,7 @@
       const sb = document.getElementById('zwy-snackbar');
       if (sb) sb.style.display = 'flex';
     };
-    for (const id of ['zwy-horizontal', 'zwy-tabFuzhuma', 'zwy-enableCorrection', 'zwy-zhTrad', 'zwy-emoji', 'zwy-fullShape', 'zwy-semicolonSecond', 'zwy-bracketPaging']) {
+    for (const id of ['zwy-horizontal', 'zwy-pinyinWindow', 'zwy-tabFuzhuma', 'zwy-pairPunct', 'zwy-enableCorrection', 'zwy-zhTrad', 'zwy-emoji', 'zwy-fullShape', 'zwy-semicolonSecond', 'zwy-bracketPaging']) {
       $(id).addEventListener('change', markDirty);
     }
 
@@ -314,6 +321,7 @@
         fullShape: $('zwy-fullShape').value,
         semicolonSecond: $('zwy-semicolonSecond').checked,
         bracketPaging: $('zwy-bracketPaging').checked,
+        pinyinInWindow: $('zwy-pinyinWindow').checked,
       });
       await reloadEngine();
       $('zwy-apply').disabled = false;
