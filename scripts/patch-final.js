@@ -151,7 +151,7 @@ if (bg.includes(oldClick)) {
 
 // 1h. Pair punctuation commit & auto-pairing
 const commitOld = ';if(l){const h=t.contextID;return await new Promise((p,w)=>{chrome.input.ime.commitText({contextID:h,text:l.text},this.imeCallDone("commitText",p,w))}),await this.invalidateCandidateCache(),!0}return!1}';
-const commitNew = ';if(l){const h=t.contextID;const cStr=__zwyHandleCommit(l.text,h,this.__zwyPairPunct!==!1);if(!cStr)return await this.invalidateCandidateCache(),!0;return await new Promise((p,w)=>{chrome.input.ime.commitText({contextID:h,text:cStr},this.imeCallDone("commitText",p,w))}),await this.invalidateCandidateCache(),!0}return!1}';
+const commitNew = ';if(l){const h=t.contextID;const cStr=__zwyHandleCommit(l.text,h,this.__zwyPairPunct!==!1);if(!cStr)return await this.invalidateCandidateCache(),!0;this.__zwyPreedit="";this.__zwyComposing=!1;this.engineId!=null&&this.setCandidateWindowProperties(this.engineId,{visible:!1}).catch(()=>{});return await new Promise((p,w)=>{chrome.input.ime.commitText({contextID:h,text:cStr},this.imeCallDone("commitText",p,w))}),await this.invalidateCandidateCache(),!0}return!1}';
 if (bg.includes(commitOld)) {
   bg = bg.replace(commitOld, commitNew);
   console.log('1h pair punctuation commit patched');

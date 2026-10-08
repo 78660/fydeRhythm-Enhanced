@@ -1,8 +1,18 @@
-# RELEASE NOTES · v1.0.6（真文韵输入法增强版 · 键盘防故障与大写反选正式版）
+# RELEASE NOTES · v1.0.7（真文韵输入法增强版）
 
 > 发布日期：2026-10-08  
 > 基线：[FydeOS/fydeRhythm](https://github.com/FydeOS/fydeRhythm) v3.1.0（真文韵）+ [amzxyz/rime-wanxiang](https://github.com/amzxyz/rime_wanxiang) 预编译万象方案  
 > 扩展包：`fydeRhythm-enhanced.zip`（18 MB，37 文件） · 方案包：`万象拼音方案-在真文韵设置页导入这个.zip`（54 MB，解压落盘约 136 MB，25 文件）
+
+---
+
+## 🚀 v1.0.7 修复更新记录 (2026-10-08)
+
+- **彻底修复空格上屏后残留无拼音空候选框（无匹配候选）的时序缺陷**：
+  - **根本原因排查**：在拼音进候选框模式下，此前预编辑拼音在异步渲染队列中存在跨帧缓存，导致用户按空格或点击候选词上屏时，RIME 引擎内部虽已完成提交并清空拼音，但界面刷新判断在队列消费前读取到了旧帧拼音，误判为“有拼音且无候选”，从而短暂弹出了一个没有拼音顶栏的空候选框并显示“（无匹配候选）”；
+  - **架构修复**：
+    1. 候选窗可见性判定严格绑定 RIME 实时上下文（`w.composition.preedit`），上屏瞬间拼音清空即直接判定为空闲状态，候选窗口立即坚决隐藏 (`visible: false`)；
+    2. 在 `commitIfAvailable` 文本提交完成处增加主动清理与隐藏保护，双重保障杜绝一切残影空框。
 
 ---
 
@@ -93,7 +103,7 @@
 - 单通道集成：所有修改原子级同步到原生 React 状态并由原生的「保存并应用」统一提交；保存时按钮显示“正在重启 RIME”，彻底消除双胶囊冲突。
 
 ### 8. 与商店版共存
-所有语言的扩展名/输入法名追加 **「（横排）」/(Horizontal)** 后缀，可与应用商店的原版真文韵并排安装、互不干扰。版本号为 **`1.0.6`**。
+所有语言的扩展名/输入法名追加 **「（横排）」/(Horizontal)** 后缀，可与应用商店的原版真文韵并排安装、互不干扰。版本号为 **`1.0.7`**。
 
 ### 9. 万象拼音方案包
 - 基于 amzxyz/rime-wanxiang 预编译，含 `shared/`（`super_lookup.lua` 辅码滤镜、`wanxiang.rime.lua`、opencc 词表）共 25 个文件；
@@ -108,7 +118,7 @@
 2. 下载并解压 `release/fydeRhythm-enhanced.zip`，得到 `fydeRhythm-enhanced` 文件夹；
 3. 打开 `chrome://extensions`，开启右上角**「开发者模式」**；
 4. 点击左上角**「加载已解压的扩展程序」**，选择 `fydeRhythm-enhanced` 文件夹；
-5. 确认扩展卡片版本号显示为 **`1.0.6`**。
+5. 确认扩展卡片版本号显示为 **`1.0.7`**。
 
 ### 第 2 步：导入万象方案
 1. 打开真文韵设置页；
@@ -135,7 +145,7 @@
 | `LICENSE-BSD3-fydeRhythm` | 上游 fydeRhythm 的 BSD-3 原文 |
 | `LICENSE-CC-BY-4.0-wanxiang` | 上游万象方案的 CC-BY-4.0 原文 |
 | `THIRD-PARTY-NOTICES.md` | 第三方组件与许可证总览 |
-| `extension/` | 增强版扩展完整目录（版本 1.0.6），可直接加载已解压使用 |
+| `extension/` | 增强版扩展完整目录（版本 1.0.7），可直接加载已解压使用 |
 | `schema-src/` | 万象方案源码资产与 Lua 滤镜 |
 | `scripts/` | 构建、打补丁与校验工具 |
 | `release/` | 预编译交付物（通过 GitHub Releases 分发） |
