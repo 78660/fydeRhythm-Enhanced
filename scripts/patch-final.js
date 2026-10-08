@@ -16,7 +16,15 @@ bg = bg.split('vertical:!0').join('vertical:__zwyVertical');
 // 1b. runtime config overlay helper, prepended as a classic-script top-level function
 if (bg.startsWith('function __zwyApply')) { console.error('ABORT: already patched'); process.exit(1); }
 const helper = [
-  'var __zwyVertical=true;',
+  'var __zwyVertical=true;var __zwyAnyUpSincePair=true;var __zwyPairChar="";var __zwySwallowCount=0;var __zwyErased=false;var __zwyComposing=false;',
+  'function __zwyCheckGateMod(m,n,h){',
+  '  if(!m)return false;',
+  '  if(m==="ControlLeft"||m==="ControlRight"||m==="Ctrl")return Boolean(n.ctrlKey||(h&&(h.ControlLeft||h.ControlRight)));',
+  '  if(m==="AltLeft"||m==="AltRight"||m==="Alt")return Boolean(n.altKey||(h&&(h.AltLeft||h.AltRight)));',
+  '  if(m==="ShiftLeft"||m==="ShiftRight"||m==="Shift")return Boolean(n.shiftKey||(h&&(h.ShiftLeft||h.ShiftRight)));',
+  '  if(m==="MetaLeft"||m==="MetaRight"||m==="Meta")return Boolean(h&&(h.MetaLeft||h.MetaRight||h.Meta));',
+  '  return Boolean(h&&h[m]);',
+  '}',
   'var __zwyPairMap={"《":"》","【":"】","（":"）","“":"”","‘":"’","「":"」","『":"』"};',
   'var __zwyLastPairClose=null;',
   'function __zwyHandleCommit(text,ctxId,pairEnabled){',
@@ -99,7 +107,7 @@ bg = helper + '\n' + bg;
 // 1c. call the helper right after the schema yaml is parsed (statement position, unique anchor)
 const anchor = 'h=ga(l);if(this.schemaAlphabet=';
 if (bg.split(anchor).length - 1 !== 1) { console.error('ABORT: anchor not unique'); process.exit(1); }
-bg = bg.replace(anchor, 'h=ga(l);__zwyApply(h,n);this.__zwyTab=(n.tabFuzhuma===true);this.__zwySchema=(n.schema);this.__zwyPinyinWindow=(n.pinyinInWindow!==false);if(this.schemaAlphabet=');
+bg = bg.replace(anchor, 'h=ga(l);__zwyApply(h,n);this.__zwyTab=(n.tabFuzhuma===true);this.__zwySchema=(n.schema);this.__zwyPinyinWindow=(n.pinyinInWindow!==false);var zgm=n.keyGateMod||"MetaLeft";var zgmap={Meta:"MetaLeft",Alt:"AltLeft",Ctrl:"ControlLeft",Shift:"ShiftLeft"};if(zgmap[zgm])zgm=zgmap[zgm];this.__zwyGate={on:n.keyGateEnabled===true,mod:zgm,codes:{}};var zg=(n.keyGateCodes||"BracketLeft,BracketRight").split(",");for(var zi=0;zi<zg.length;zi++)this.__zwyGate.codes[zg[zi].trim()]=1;this.__zwyHeld={};this.__zwyCapsToAscii=(n.capsToAscii!==false);this.__zwyCapsState=false;this.__zwyCapsSaved=undefined;this.__zwyCapsShadow=false;this.__zwyAsciiCache=!1;this.__zwyRepImm=(n.repeatImmunity===true);this.__zwyPhClean=(n.phantomClean===true);if(this.schemaAlphabet=');
 write('background.js', bg);
 
 // 1d. Tab keycode: Tab was missing from the special-keys table, so it never
@@ -111,7 +119,7 @@ bg = bg.replace(tabAnchor, 'Qc={Tab:65289,ArrowUp:65362,');
 
 // 1f. Reorder and adapt CandidateWindow for robust horizontal rendering
 const cwOld = 'if(w.menu.candidates.length>0){if(p.push(this.setCandidateWindowProperties(n,{visible:!0,cursorVisible:!0,auxiliaryTextVisible:!0,pageSize:w.menu.pageSize,auxiliaryText:chrome.i18n.getMessage("candidate_page",(w.menu.pageNumber+1).toString())+(w.menu.isLastPage?chrome.i18n.getMessage("candidate_page_last"):""),windowPosition:"composition",vertical:__zwyVertical})),this.context!=null){const _=this.context.contextID;p.push(new Promise((x,b)=>{chrome.input.ime.setCandidates({contextID:_,candidates:w.menu.candidates.map((C,F)=>({candidate:C.text,id:F,label:w.selectLabels[F]||(F+1).toString()}))},this.imeCallDone("setCandidates",x,b))})),p.push(new Promise((x,b)=>{chrome.input.ime.setCursorPosition({contextID:_,candidateID:w.menu.highlightedCandidateIndex},this.imeCallDone("setCursorPosition",x,b))}))}}';
-const cwNew = 'if(w.menu.candidates.length>0){if(this.context!=null){const _=this.context.contextID;p.push(new Promise((x,b)=>{chrome.input.ime.setCandidates({contextID:_,candidates:w.menu.candidates.map((C,F)=>({candidate:__zwyVertical?C.text:\"\",id:F,label:w.selectLabels[F]||(F+1).toString(),annotation:__zwyVertical?(C.comment||\"\"):((F+1)+\". \"+C.text)}))},this.imeCallDone(\"setCandidates\",x,b))})),p.push(new Promise((x,b)=>{chrome.input.ime.setCursorPosition({contextID:_,candidateID:w.menu.highlightedCandidateIndex},this.imeCallDone(\"setCursorPosition\",x,b))}))}p.push(this.setCandidateWindowProperties(n,{visible:!0,cursorVisible:!0,auxiliaryTextVisible:this.__zwyPinyinWindow?!!this.__zwyPreedit:__zwyVertical,pageSize:__zwyVertical?w.menu.pageSize:Math.max(1,Math.min(w.menu.pageSize,w.menu.candidates.length)),auxiliaryText:this.__zwyPinyinWindow?(this.__zwyPreedit||void 0):__zwyVertical?(chrome.i18n.getMessage(\"candidate_page\",(w.menu.pageNumber+1).toString())+(w.menu.isLastPage?chrome.i18n.getMessage(\"candidate_page_last\"):\"\")):void 0,windowPosition:this.__zwyPinyinWindow?\"cursor\":__zwyVertical?\"composition\":\"cursor\",vertical:__zwyVertical}))}';
+const cwNew = 'if(w.menu.candidates.length>0){if(this.context!=null){const _=this.context.contextID;p.push(new Promise((x,b)=>{chrome.input.ime.setCandidates({contextID:_,candidates:w.menu.candidates.map((C,F)=>({candidate:__zwyVertical?C.text:\"\",id:F,label:w.selectLabels[F]||(F+1).toString(),annotation:__zwyVertical?(C.comment||\"\"):((F+1)+\". \"+C.text)}))},this.imeCallDone(\"setCandidates\",x,b))})),p.push(new Promise((x,b)=>{chrome.input.ime.setCursorPosition({contextID:_,candidateID:w.menu.highlightedCandidateIndex},this.imeCallDone(\"setCursorPosition\",x,b))}))}p.push(this.setCandidateWindowProperties(n,{visible:!0,cursorVisible:!0,auxiliaryTextVisible:this.__zwyPinyinWindow?!!this.__zwyPreedit:__zwyVertical,pageSize:__zwyVertical?w.menu.pageSize:Math.max(1,Math.min(w.menu.pageSize,w.menu.candidates.length)),auxiliaryText:this.__zwyPinyinWindow?(this.__zwyPreedit||void 0):__zwyVertical?(chrome.i18n.getMessage(\"candidate_page\",(w.menu.pageNumber+1).toString())+(w.menu.isLastPage?chrome.i18n.getMessage(\"candidate_page_last\"):\"\")):void 0,windowPosition:this.__zwyPinyinWindow?\"cursor\":__zwyVertical?\"composition\":\"cursor\",vertical:__zwyVertical}))}else if(_hasPreedit){if(this.context!=null){const _=this.context.contextID;p.push(new Promise((x,b)=>{chrome.input.ime.setCandidates({contextID:_,candidates:[{candidate:\"\",id:-1,label:\"\",annotation:\"（无匹配候选）\"}]},this.imeCallDone(\"setCandidates\",x,b))}))}p.push(this.setCandidateWindowProperties(n,{visible:!0,cursorVisible:!1,auxiliaryTextVisible:this.__zwyPinyinWindow?!!this.__zwyPreedit:!1,pageSize:1,auxiliaryText:this.__zwyPinyinWindow?(this.__zwyPreedit||void 0):void 0,windowPosition:\"cursor\",vertical:__zwyVertical}))}else{p.push(this.setCandidateWindowProperties(n,{visible:!1}))}}';
 
 if (bg.includes(cwOld)) {
   bg = bg.replace(cwOld, cwNew);
@@ -191,6 +199,9 @@ const fuzzyNeedle = '?.fuzzy_pinyin&&';
 const fuzzyCount = oc.split(fuzzyNeedle).length - 1;
 if (fuzzyCount !== 1) { console.error('ABORT: fuzzy gate anchor count ' + fuzzyCount); process.exit(1); }
 oc = oc.split(fuzzyNeedle).join('?.fuzzy_pinyin!==!1&&');
+const oldTe = 'function Te(Ge){console.log(\"Change:\",Ge),f(1),a(pt=>Object.assign({},pt,Ge))}';
+const newTe = 'function Te(Ge){window.__zwyChangeSettings=Te,console.log(\"Change:\",Ge),f(1),a(pt=>Object.assign({},pt,Ge))}window.__zwyChangeSettings=Te;';
+if(oc.includes(oldTe)) oc = oc.replace(oldTe, newTe);
 write(path.join('chunks', optChunk), oc);
 console.log('fuzzy gate opened  :', path.join('chunks', optChunk));
 console.log('panel embedded     :', read('options.html').includes('zwy-panel.js'));
@@ -211,7 +222,7 @@ fs.writeFileSync(path.join(dir, 'zwy-panel.js'), fs.readFileSync(jsPath, 'utf8')
 // 2.5 version stamp
 const manPath = path.join(dir, 'manifest.json');
 const man = JSON.parse(fs.readFileSync(manPath, 'utf8'));
-man.version = '1.0.5';
+man.version = '1.0.6';
 man.author = '78660';
 fs.writeFileSync(manPath, JSON.stringify(man, null, 2));
 
