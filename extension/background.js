@@ -265,10 +265,21 @@ function print() { __p += __j.call(arguments, '') }
   }
 
   // C. 大写锁定处理：
-  // 当开启大写锁定且处于空闲（非组字状态）时，所有普通输入按键（字母、标点符号、数字、空格等，即 key 长度为 1 的字符）
-  // 直接放行给 ChromeOS 原生处理 -> 输出纯正的英文大写字母与半角英文标点！
-  // 组字中（isComposing 为 true，如拼音或反选）绝不直通，字母完整送入 RIME 触发万象大写反选！
+  // 当开启大写锁定且处于空闲（非组字状态）时：
+  // 如果此按键是被门控放行的受保护按键（如按住 Ctrl/Alt 敲击【键），由于物理上修饰键被按住，
+  // 原生直通会被 ChromeOS 当作快捷键（如 Ctrl+[ 变为 ESC，Alt+[ 变成贴靠窗口），
+  // 因此由输入法直接调用 commitText 上屏对应的英文半角字符 '['！
+  // 对于普通未受门控保护的字母、标点、数字，直接放行给 ChromeOS 原生处理。
   if(isCaps&&this.__zwyCapsToAscii&&!isComposing&&n.key.length===1&&(this.__zwyGateSkip||(!n.ctrlKey&&!n.altKey))){
+    if(this.__zwyGateSkip){
+      if(!t&&this.context){
+        const C=(this.isPlainPrintable(n)?Jc(this.remapLayouts().ascii,n.code,!!n.shiftKey,!!n.capsLock):null)??n.key;
+        if(C&&C.length===1){
+          chrome.input.ime.commitText({contextID:this.context.contextID,text:C});
+        }
+      }
+      return !0;
+    }
     return !1;
   }
 
@@ -330,12 +341,23 @@ function print() { __p += __j.call(arguments, '') }
         console.error(C);
         x=!1;
       }
-      if(!x&&!t&&this.isPlainPrintable(n)&&this.context){
-        const C=Jc(this.remapLayouts().ascii,n.code,!!n.shiftKey,!!n.capsLock);
-        if(C!==null&&C!==n.key){
-          const F=this.context.contextID;
-          await new Promise(W=>{chrome.input.ime.commitText({contextID:F,text:C},()=>{const O=chrome.runtime.lastError;O&&console.warn("commitText (ascii remap) failed:",O.message),W()})});
+      if(!x&&this.context){
+        if(this.__zwyGateSkip){
+          if(!t){
+            const C=(this.isPlainPrintable(n)?Jc(this.remapLayouts().ascii,n.code,!!n.shiftKey,!!n.capsLock):null)??n.key;
+            if(C&&C.length===1){
+              const F=this.context.contextID;
+              await new Promise(W=>{chrome.input.ime.commitText({contextID:F,text:C},()=>{const O=chrome.runtime.lastError;O&&console.warn("commitText (gate ascii) failed:",O.message),W()})});
+            }
+          }
           x=!0;
+        }else if(!t&&this.isPlainPrintable(n)){
+          const C=Jc(this.remapLayouts().ascii,n.code,!!n.shiftKey,!!n.capsLock);
+          if(C!==null&&C!==n.key){
+            const F=this.context.contextID;
+            await new Promise(W=>{chrome.input.ime.commitText({contextID:F,text:C},()=>{const O=chrome.runtime.lastError;O&&console.warn("commitText (ascii remap) failed:",O.message),W()})});
+            x=!0;
+          }
         }
       }
       return !await this.commitIfAvailable(s,w,p,_)&&h===this.candidateGeneration&&await this.refreshContextInSessionOperation(),!this.preeditEmpty&&(n.code=="PageUp"||n.code=="PageDown")?!0:x;

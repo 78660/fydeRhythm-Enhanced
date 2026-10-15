@@ -197,6 +197,15 @@ const feedNew = `feedKey(n){
   }
 
   if(isCaps&&this.__zwyCapsToAscii&&!isComposing&&n.key.length===1&&(this.__zwyGateSkip||(!n.ctrlKey&&!n.altKey))){
+    if(this.__zwyGateSkip){
+      if(!t&&this.context){
+        const C=(this.isPlainPrintable(n)?Jc(this.remapLayouts().ascii,n.code,!!n.shiftKey,!!n.capsLock):null)??n.key;
+        if(C&&C.length===1){
+          chrome.input.ime.commitText({contextID:this.context.contextID,text:C});
+        }
+      }
+      return !0;
+    }
     return !1;
   }
 
@@ -215,6 +224,14 @@ if (bg.includes(feedOld)) {
 } else {
   console.error('feedOld not matched in bg');
   process.exit(1);
+}
+
+// 1l. Gate ascii commit when RIME unhandled (e.g. English mode)
+const postProcOld = 'if(!x&&!t&&this.isPlainPrintable(n)&&this.context){const C=Jc(this.remapLayouts().ascii,n.code,!!n.shiftKey,!!n.capsLock);if(C!==null&&C!==n.key){';
+const postProcNew = 'if(!x&&this.context){if(this.__zwyGateSkip){if(!t){const C=(this.isPlainPrintable(n)?Jc(this.remapLayouts().ascii,n.code,!!n.shiftKey,!!n.capsLock):null)??n.key;if(C&&C.length===1){const F=this.context.contextID;await new Promise(W=>{chrome.input.ime.commitText({contextID:F,text:C},()=>{const O=chrome.runtime.lastError;O&&console.warn(\"commitText (gate ascii) failed:\",O.message),W()})})}}x=!0}else if(!t&&this.isPlainPrintable(n)){const C=Jc(this.remapLayouts().ascii,n.code,!!n.shiftKey,!!n.capsLock);if(C!==null&&C!==n.key){';
+if (bg.includes(postProcOld)) {
+  bg = bg.replace(postProcOld, postProcNew);
+  console.log('1l post processKey gate ascii patched');
 }
 
 // 1j. Sogou-style pinyin-in-window: capture the preedit into __zwyPreedit and
@@ -268,7 +285,7 @@ fs.writeFileSync(path.join(dir, 'zwy-panel.js'), fs.readFileSync(jsPath, 'utf8')
 // 2.5 version stamp
 const manPath = path.join(dir, 'manifest.json');
 const man = JSON.parse(fs.readFileSync(manPath, 'utf8'));
-man.version = '1.0.8';
+man.version = '1.0.9';
 man.author = '78660';
 fs.writeFileSync(manPath, JSON.stringify(man, null, 2));
 
