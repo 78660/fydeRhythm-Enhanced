@@ -160,12 +160,58 @@ if (bg.includes(commitOld)) {
   process.exit(1);
 }
 
-// 1i. FeedKey backspace pair deletion
+// 1i. isPlainPrintable and bulletproof feedKey patch (CapsLock English punctuation & Gate priority)
+const ippOld = 'isPlainPrintable(n){return n.key.length===1&&!n.altKey&&!n.ctrlKey}';
+const ippNew = 'isPlainPrintable(n){return n.key.length===1&&(this.__zwyGateSkip||(!n.altKey&&!n.ctrlKey))}';
+if (bg.includes(ippOld)) {
+  bg = bg.replace(ippOld, ippNew);
+}
+
 const feedOld = 'feedKey(n){const t=n.type=="keyup";if(t){if(this.pendingSwitchKeyUp===n.code)';
-const feedNew = 'feedKey(n){const t=n.type=="keyup";if(!t&&n.code==="Backspace"&&__zwyLastPairClose&&this.context){try{chrome.input.ime.deleteSurroundingText({contextID:this.context.contextID,offset:0,length:1});}catch(e){}__zwyLastPairClose=null;}else if(!t&&n.code!=="ShiftLeft"&&n.code!=="ShiftRight"&&n.code!=="AltLeft"&&n.code!=="AltRight"&&n.code!=="ControlLeft"&&n.code!=="ControlRight"){__zwyLastPairClose=null;}if(t){if(this.pendingSwitchKeyUp===n.code)';
+const feedNew = `feedKey(n){
+  const t=n.type=="keyup";
+  if(t){__zwyAnyUpSincePair=true;__zwySwallowCount=0;__zwyErased=false;}
+  if(n.code)this.__zwyHeld[n.code]=(n.type!=="keyup");
+
+  try{
+    if(typeof n.capsLock==="boolean")this.__zwyCapsState=n.capsLock;
+    else if(n.code==="CapsLock"&&!t)this.__zwyCapsState=!this.__zwyCapsState;
+  }catch(e){}
+  const isCaps=Boolean(this.__zwyCapsState);
+
+  const isComposing=Boolean((this.__zwyPreedit&&this.__zwyPreedit.length>0)||this.__zwyComposing);
+
+  if(n.code==="AltLeft"||n.code==="AltRight"||n.key==="Alt"||n.key==="Meta"||n.code==="MetaLeft"||n.code==="MetaRight"){
+    return !1;
+  }
+
+  if(this.__zwyGate&&this.__zwyGate.on&&this.__zwyGate.codes[n.code]){
+    const gh=__zwyCheckGateMod(this.__zwyGate.mod,n,this.__zwyHeld);
+    if(!gh){
+      try{this.printErr("[zwy-gate] blocked "+n.code+" t="+Date.now()%100000000)}catch(e){}
+      return !0;
+    }
+    this.__zwyGateSkip=!0;
+  }else{
+    this.__zwyGateSkip=!1;
+  }
+
+  if(isCaps&&this.__zwyCapsToAscii&&!isComposing&&n.key.length===1&&(this.__zwyGateSkip||(!n.ctrlKey&&!n.altKey))){
+    return !1;
+  }
+
+  if(!t&&n.code==="Backspace"&&__zwyLastPairClose&&this.context){
+    try{chrome.input.ime.deleteSurroundingText({contextID:this.context.contextID,offset:0,length:1});}catch(e){}
+    __zwyLastPairClose=null;
+  }else if(!t&&n.code!=="ShiftLeft"&&n.code!=="ShiftRight"&&n.code!=="AltLeft"&&n.code!=="AltRight"&&n.code!=="ControlLeft"&&n.code!=="ControlRight"){
+    __zwyLastPairClose=null;
+  }
+
+  if(t){`;
+
 if (bg.includes(feedOld)) {
   bg = bg.replace(feedOld, feedNew);
-  console.log('1i feedKey backspace pair deletion patched');
+  console.log('1i feedKey bulletproof logic patched');
 } else {
   console.error('feedOld not matched in bg');
   process.exit(1);
@@ -222,7 +268,7 @@ fs.writeFileSync(path.join(dir, 'zwy-panel.js'), fs.readFileSync(jsPath, 'utf8')
 // 2.5 version stamp
 const manPath = path.join(dir, 'manifest.json');
 const man = JSON.parse(fs.readFileSync(manPath, 'utf8'));
-man.version = '1.0.6';
+man.version = '1.0.8';
 man.author = '78660';
 fs.writeFileSync(manPath, JSON.stringify(man, null, 2));
 

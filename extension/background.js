@@ -238,6 +238,13 @@ function print() { __p += __j.call(arguments, '') }
   if(t){__zwyAnyUpSincePair=true;__zwySwallowCount=0;__zwyErased=false;}
   if(n.code)this.__zwyHeld[n.code]=(n.type!=="keyup");
 
+  // 大写锁定状态双保险维护
+  try{
+    if(typeof n.capsLock==="boolean")this.__zwyCapsState=n.capsLock;
+    else if(n.code==="CapsLock"&&!t)this.__zwyCapsState=!this.__zwyCapsState;
+  }catch(e){}
+  const isCaps=Boolean(this.__zwyCapsState);
+
   const isComposing=Boolean((this.__zwyPreedit&&this.__zwyPreedit.length>0)||this.__zwyComposing);
 
   // A. 纯修饰键绝对直通 ChromeOS（无论是空闲还是组字中，Search+Alt, Alt+Tab 永远放行给系统）
@@ -245,32 +252,7 @@ function print() { __p += __j.call(arguments, '') }
     return !1;
   }
 
-  // B. 大写锁定处理：
-  // 只有在【非组字状态（空闲）】下敲字母，才直通 ChromeOS 输出大写英文 A-Z；
-  // 在【组字/反选状态（isComposing 为 true）】下，绝对不删除拼音！让字母继续送给 RIME，允许用大写字母执行反选！
-  if(Boolean(n.capsLock)&&this.__zwyCapsToAscii&&!isComposing&&Boolean(n.code&&n.code.startsWith("Key"))&&!n.ctrlKey&&!n.altKey){
-    return !1;
-  }
-
-  // C. Backspace 成对删除
-  if(!t&&n.code==="Backspace"&&__zwyLastPairClose&&this.context){
-    try{chrome.input.ime.deleteSurroundingText({contextID:this.context.contextID,offset:0,length:1});}catch(e){}
-    __zwyLastPairClose=null;
-  }else if(!t&&n.code!=="ShiftLeft"&&n.code!=="ShiftRight"&&n.code!=="AltLeft"&&n.code!=="AltRight"&&n.code!=="ControlLeft"&&n.code!=="ControlRight"){
-    __zwyLastPairClose=null;
-  }
-
-  // D. 方案切换快捷键
-  if(t){
-    if(this.pendingSwitchKeyUp===n.code)return this.pendingSwitchKeyUp=null,!0;
-  }else if(km(n,this.activeSettings.schemaSwitchKey)){
-    return this.pendingSwitchKeyUp=n.code,(async()=>{
-      try{await this.cycleToNextSchema()}catch(s){this.printErr("cycleToNextSchema: "+String(s))}
-      return !0;
-    })();
-  }
-
-  // E. 按键锁（支持全键盘任意按键作为门控键）
+  // B. 按键锁（门控保护）：最高优先级拦截！无论在什么模式下，只要没按住门控键，锁定的幽灵键一律秒杀吞掉！
   if(this.__zwyGate&&this.__zwyGate.on&&this.__zwyGate.codes[n.code]){
     const gh=__zwyCheckGateMod(this.__zwyGate.mod,n,this.__zwyHeld);
     if(!gh){
@@ -280,6 +262,32 @@ function print() { __p += __j.call(arguments, '') }
     this.__zwyGateSkip=!0;
   }else{
     this.__zwyGateSkip=!1;
+  }
+
+  // C. 大写锁定处理：
+  // 当开启大写锁定且处于空闲（非组字状态）时，所有普通输入按键（字母、标点符号、数字、空格等，即 key 长度为 1 的字符）
+  // 直接放行给 ChromeOS 原生处理 -> 输出纯正的英文大写字母与半角英文标点！
+  // 组字中（isComposing 为 true，如拼音或反选）绝不直通，字母完整送入 RIME 触发万象大写反选！
+  if(isCaps&&this.__zwyCapsToAscii&&!isComposing&&n.key.length===1&&(this.__zwyGateSkip||(!n.ctrlKey&&!n.altKey))){
+    return !1;
+  }
+
+  // D. Backspace 成对删除
+  if(!t&&n.code==="Backspace"&&__zwyLastPairClose&&this.context){
+    try{chrome.input.ime.deleteSurroundingText({contextID:this.context.contextID,offset:0,length:1});}catch(e){}
+    __zwyLastPairClose=null;
+  }else if(!t&&n.code!=="ShiftLeft"&&n.code!=="ShiftRight"&&n.code!=="AltLeft"&&n.code!=="AltRight"&&n.code!=="ControlLeft"&&n.code!=="ControlRight"){
+    __zwyLastPairClose=null;
+  }
+
+  // E. 方案切换快捷键
+  if(t){
+    if(this.pendingSwitchKeyUp===n.code)return this.pendingSwitchKeyUp=null,!0;
+  }else if(km(n,this.activeSettings.schemaSwitchKey)){
+    return this.pendingSwitchKeyUp=n.code,(async()=>{
+      try{await this.cycleToNextSchema()}catch(s){this.printErr("cycleToNextSchema: "+String(s))}
+      return !0;
+    })();
   }
 
   // F. 进入会话与 RIME 引擎
