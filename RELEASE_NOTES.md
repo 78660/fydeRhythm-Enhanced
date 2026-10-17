@@ -1,8 +1,24 @@
-# RELEASE NOTES · v1.0.9（真文韵输入法增强版）
+# RELEASE NOTES · v1.0.10（真文韵输入法增强版）
 
 > 发布日期：2026-10-08  
 > 基线：[FydeOS/fydeRhythm](https://github.com/FydeOS/fydeRhythm) v3.1.0（真文韵）+ [amzxyz/rime-wanxiang](https://github.com/amzxyz/rime_wanxiang) 预编译万象方案  
 > 扩展包：`fydeRhythm-enhanced.zip`（18 MB，37 文件） · 方案包：`万象拼音方案-在真文韵设置页导入这个.zip`（54 MB，解压落盘约 136 MB，25 文件）
+
+---
+
+## 🚀 v1.0.10 更新记录 (2026-10-17)
+
+- **彻底修复单字母按回车未上屏、直接穿透触发网页搜索的缺陷（零宽空格组字锚定 & 会话内保底提交）**：
+  - **根本原因排查**：
+    1. 在“拼音进候选框”模式下，此前为了隐藏内联拼音将 `setComposition` 的文本改为了空字符串 `""`。当第一轮打字结束后 `this.preeditEmpty` 变为 `true`，从第二轮打字起触发了 `n.text.length == 0 && this.preeditEmpty` 去重短路，导致系统底层不再收到 `setComposition` 调用。ChromeOS 浏览器检测到 `HasCompositionText() == false`，误以为当前未处于输入法组字状态，在用户按下回车时不等输入法异步返回便直接在 UI 线程触发了网页搜索；
+    2. 单字母（如单个 `s`）状态下按回车时，RIME WASM 引擎内部将其视作未成词前缀，不派发独立的 `commit` 对象；
+  - **架构修复**：
+    1. **零宽空格（`\u200B`）组字锚定**：在拼音进候选框且存在拼音时，向 `setComposition` 传入长度为 1 的零宽空格 `"\u200B"`。视觉上 0 像素完全不可见（输入框保持干净无虚字），同时让 ChromeOS 准确感知 `HasCompositionText() == true` 挂起搜索框回车行为，并在上屏或退格删空时自动清除，绝无残留；
+    2. **会话互斥锁内回车保底提交**：在会话互斥锁内记录实时拼音快照（`_preeditBefore`），按下回车时若 RIME 未产生 `commit` 对象，自动以当前拼音快照保底上屏并同步重置状态，返回值锁定为 `Boolean(_committed || x)`，连续任意次敲单字母或多字母按回车均 100% 稳定上屏！
+
+- **修复横排候选词序号重复出现两遍（如 `1. 1. 镇`）的视觉问题**：
+  - **根本原因**：ChromeOS 原生 `CandidateView` 在横排模式下原本就会由其 `shortcut_label_` 自动渲染序号并附带点号（如 `1.`）；此前在 `annotation` 中重复拼接了 `(F+1)+". "` 导致序号出现两次；
+  - **架构修复**：横排模式下 `annotation` 恢复为纯净汉字文本 `C.text`，候选词序号恢复为标准唯一样式（`1. 镇   2. 针   3. 振`）。
 
 ---
 
@@ -120,7 +136,7 @@
 - 单通道集成：所有修改原子级同步到原生 React 状态并由原生的「保存并应用」统一提交；保存时按钮显示“正在重启 RIME”，彻底消除双胶囊冲突。
 
 ### 8. 与商店版共存
-所有语言的扩展名/输入法名追加 **「（横排）」/(Horizontal)** 后缀，可与应用商店的原版真文韵并排安装、互不干扰。版本号为 **`1.0.9`**。
+所有语言的扩展名/输入法名追加 **「（横排）」/(Horizontal)** 后缀，可与应用商店的原版真文韵并排安装、互不干扰。版本号为 **`1.0.10`**。
 
 ### 9. 万象拼音方案包
 - 基于 amzxyz/rime-wanxiang 预编译，含 `shared/`（`super_lookup.lua` 辅码滤镜、`wanxiang.rime.lua`、opencc 词表）共 25 个文件；
@@ -135,7 +151,7 @@
 2. 下载并解压 `release/fydeRhythm-enhanced.zip`，得到 `fydeRhythm-enhanced` 文件夹；
 3. 打开 `chrome://extensions`，开启右上角**「开发者模式」**；
 4. 点击左上角**「加载已解压的扩展程序」**，选择 `fydeRhythm-enhanced` 文件夹；
-5. 确认扩展卡片版本号显示为 **`1.0.9`**。
+5. 确认扩展卡片版本号显示为 **`1.0.10`**。
 
 ### 第 2 步：导入万象方案
 1. 打开真文韵设置页；
@@ -162,7 +178,7 @@
 | `LICENSE-BSD3-fydeRhythm` | 上游 fydeRhythm 的 BSD-3 原文 |
 | `LICENSE-CC-BY-4.0-wanxiang` | 上游万象方案的 CC-BY-4.0 原文 |
 | `THIRD-PARTY-NOTICES.md` | 第三方组件与许可证总览 |
-| `extension/` | 增强版扩展完整目录（版本 1.0.9），可直接加载已解压使用 |
+| `extension/` | 增强版扩展完整目录（版本 1.0.10），可直接加载已解压使用 |
 | `schema-src/` | 万象方案源码资产与 Lua 滤镜 |
 | `scripts/` | 构建、打补丁与校验工具 |
 | `release/` | 预编译交付物（通过 GitHub Releases 分发） |

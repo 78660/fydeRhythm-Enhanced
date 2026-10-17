@@ -119,7 +119,7 @@ bg = bg.replace(tabAnchor, 'Qc={Tab:65289,ArrowUp:65362,');
 
 // 1f. Reorder and adapt CandidateWindow for robust horizontal rendering
 const cwOld = 'if(w.menu.candidates.length>0){if(p.push(this.setCandidateWindowProperties(n,{visible:!0,cursorVisible:!0,auxiliaryTextVisible:!0,pageSize:w.menu.pageSize,auxiliaryText:chrome.i18n.getMessage("candidate_page",(w.menu.pageNumber+1).toString())+(w.menu.isLastPage?chrome.i18n.getMessage("candidate_page_last"):""),windowPosition:"composition",vertical:__zwyVertical})),this.context!=null){const _=this.context.contextID;p.push(new Promise((x,b)=>{chrome.input.ime.setCandidates({contextID:_,candidates:w.menu.candidates.map((C,F)=>({candidate:C.text,id:F,label:w.selectLabels[F]||(F+1).toString()}))},this.imeCallDone("setCandidates",x,b))})),p.push(new Promise((x,b)=>{chrome.input.ime.setCursorPosition({contextID:_,candidateID:w.menu.highlightedCandidateIndex},this.imeCallDone("setCursorPosition",x,b))}))}}';
-const cwNew = 'if(w.menu.candidates.length>0){if(this.context!=null){const _=this.context.contextID;p.push(new Promise((x,b)=>{chrome.input.ime.setCandidates({contextID:_,candidates:w.menu.candidates.map((C,F)=>({candidate:__zwyVertical?C.text:\"\",id:F,label:w.selectLabels[F]||(F+1).toString(),annotation:__zwyVertical?(C.comment||\"\"):((F+1)+\". \"+C.text)}))},this.imeCallDone(\"setCandidates\",x,b))})),p.push(new Promise((x,b)=>{chrome.input.ime.setCursorPosition({contextID:_,candidateID:w.menu.highlightedCandidateIndex},this.imeCallDone(\"setCursorPosition\",x,b))}))}p.push(this.setCandidateWindowProperties(n,{visible:!0,cursorVisible:!0,auxiliaryTextVisible:this.__zwyPinyinWindow?!!this.__zwyPreedit:__zwyVertical,pageSize:__zwyVertical?w.menu.pageSize:Math.max(1,Math.min(w.menu.pageSize,w.menu.candidates.length)),auxiliaryText:this.__zwyPinyinWindow?(this.__zwyPreedit||void 0):__zwyVertical?(chrome.i18n.getMessage(\"candidate_page\",(w.menu.pageNumber+1).toString())+(w.menu.isLastPage?chrome.i18n.getMessage(\"candidate_page_last\"):\"\")):void 0,windowPosition:this.__zwyPinyinWindow?\"cursor\":__zwyVertical?\"composition\":\"cursor\",vertical:__zwyVertical}))}else if(_hasPreedit){if(this.context!=null){const _=this.context.contextID;p.push(new Promise((x,b)=>{chrome.input.ime.setCandidates({contextID:_,candidates:[{candidate:\"\",id:-1,label:\"\",annotation:\"（无匹配候选）\"}]},this.imeCallDone(\"setCandidates\",x,b))}))}p.push(this.setCandidateWindowProperties(n,{visible:!0,cursorVisible:!1,auxiliaryTextVisible:this.__zwyPinyinWindow?!!this.__zwyPreedit:!1,pageSize:1,auxiliaryText:this.__zwyPinyinWindow?(this.__zwyPreedit||void 0):void 0,windowPosition:\"cursor\",vertical:__zwyVertical}))}else{p.push(this.setCandidateWindowProperties(n,{visible:!1}))}}';
+const cwNew = 'if(w.menu.candidates.length>0){if(this.context!=null){const _=this.context.contextID;p.push(new Promise((x,b)=>{chrome.input.ime.setCandidates({contextID:_,candidates:w.menu.candidates.map((C,F)=>({candidate:__zwyVertical?C.text:\"\",id:F,label:w.selectLabels[F]||(F+1).toString(),annotation:__zwyVertical?(C.comment||\"\"):C.text}))},this.imeCallDone(\"setCandidates\",x,b))})),p.push(new Promise((x,b)=>{chrome.input.ime.setCursorPosition({contextID:_,candidateID:w.menu.highlightedCandidateIndex},this.imeCallDone(\"setCursorPosition\",x,b))}))}p.push(this.setCandidateWindowProperties(n,{visible:!0,cursorVisible:!0,auxiliaryTextVisible:this.__zwyPinyinWindow?!!this.__zwyPreedit:__zwyVertical,pageSize:__zwyVertical?w.menu.pageSize:Math.max(1,Math.min(w.menu.pageSize,w.menu.candidates.length)),auxiliaryText:this.__zwyPinyinWindow?(this.__zwyPreedit||void 0):__zwyVertical?(chrome.i18n.getMessage(\"candidate_page\",(w.menu.pageNumber+1).toString())+(w.menu.isLastPage?chrome.i18n.getMessage(\"candidate_page_last\"):\"\")):void 0,windowPosition:this.__zwyPinyinWindow?\"cursor\":__zwyVertical?\"composition\":\"cursor\",vertical:__zwyVertical}))}else if(_hasPreedit){if(this.context!=null){const _=this.context.contextID;p.push(new Promise((x,b)=>{chrome.input.ime.setCandidates({contextID:_,candidates:[{candidate:\"\",id:-1,label:\"\",annotation:\"（无匹配候选）\"}]},this.imeCallDone(\"setCandidates\",x,b))}))}p.push(this.setCandidateWindowProperties(n,{visible:!0,cursorVisible:!1,auxiliaryTextVisible:this.__zwyPinyinWindow?!!this.__zwyPreedit:!1,pageSize:1,auxiliaryText:this.__zwyPinyinWindow?(this.__zwyPreedit||void 0):void 0,windowPosition:\"cursor\",vertical:__zwyVertical}))}else{p.push(this.setCandidateWindowProperties(n,{visible:!1}))}}';
 
 if (bg.includes(cwOld)) {
   bg = bg.replace(cwOld, cwNew);
@@ -135,7 +135,15 @@ if (bg.includes(cwOld)) {
 // The repaint afterwards shows the reverse preedit/candidates natively.
 const procAnchor = 'x=await s.processKey(l,o)';
 if (bg.split(procAnchor).length - 1 !== 1) { console.error('ABORT: processKey anchor not found/unique'); process.exit(1); }
-bg = bg.replace(procAnchor, 'if(l===65289&&o===0&&this.__zwyTab&&this.__zwySchema==="wanxiang"){this.printErr("[zwy] Tab -> 辅码反查");const curCtx=await s.getContext();if(curCtx&&curCtx.composition&&curCtx.composition.preedit&&curCtx.composition.preedit.indexOf("`")>=0){return!0;}l=96}x=await s.processKey(l,o)');
+bg = bg.replace(procAnchor, 'if(l===65289&&o===0&&this.__zwyTab&&this.__zwySchema==="wanxiang"&&!this.__zwyAsciiCache){this.printErr("[zwy] Tab -> 辅码反查");const curCtx=await s.getContext();if(curCtx&&curCtx.composition&&curCtx.composition.preedit&&curCtx.composition.preedit.indexOf("`")>=0){return!0;}l=96}x=await s.processKey(l,o)');
+
+const oldPreBefore = 'if(this.session!==s||this.sessionEpoch!==p)return!1;';
+const newPreBefore = 'if(this.session!==s||this.sessionEpoch!==p)return!1;let _preeditBefore="";if(!t&&n.code==="Enter"){try{const curCtx=await s.getContext();_preeditBefore=(curCtx&&curCtx.composition&&curCtx.composition.preedit)||this.__zwyPreedit||"";}catch(e){_preeditBefore=this.__zwyPreedit||"";}}';
+if (bg.includes(oldPreBefore)) bg = bg.replace(oldPreBefore, newPreBefore);
+
+const oldCommLine = 'return!await this.commitIfAvailable(s,w,p,_)&&h===this.candidateGeneration&&await this.refreshContextInSessionOperation(),!this.preeditEmpty&&(n.code=="PageUp"||n.code=="PageDown")?!0:x';
+const newCommLine = 'let _committed=await this.commitIfAvailable(s,w,p,_);if(!t&&n.code==="Enter"&&!_committed&&_preeditBefore.length>0&&w){const hId=w.contextID;const cStr=__zwyHandleCommit(_preeditBefore,hId,this.__zwyPairPunct!==!1);this.__zwyPreedit="";this.__zwyComposing=!1;this.preeditEmpty=!0;this.engineId!=null&&this.setCandidateWindowProperties(this.engineId,{visible:!1}).catch(()=>{});await new Promise(res=>{chrome.input.ime.commitText({contextID:hId,text:cStr||_preeditBefore},this.imeCallDone("commitText",res,res))});await this.invalidateCandidateCache();try{await s.clearComposition();}catch(ce){}_committed=!0;x=!0;}await(!_committed&&h===this.candidateGeneration&&this.refreshContextInSessionOperation());if(!this.preeditEmpty&&(n.code=="PageUp"||n.code=="PageDown"))return!0;return Boolean(_committed||x)';
+if (bg.includes(oldCommLine)) bg = bg.replace(oldCommLine, newCommLine);
 
 // 1g. Direct commit on candidate click (space key press after select)
 const oldClick = 'await s.actionCandidate(n,"select",t),!await this.commitIfAvailable(s,o,l,h)';
@@ -151,7 +159,7 @@ if (bg.includes(oldClick)) {
 
 // 1h. Pair punctuation commit & auto-pairing
 const commitOld = ';if(l){const h=t.contextID;return await new Promise((p,w)=>{chrome.input.ime.commitText({contextID:h,text:l.text},this.imeCallDone("commitText",p,w))}),await this.invalidateCandidateCache(),!0}return!1}';
-const commitNew = ';if(l){const h=t.contextID;const cStr=__zwyHandleCommit(l.text,h,this.__zwyPairPunct!==!1);if(!cStr)return await this.invalidateCandidateCache(),!0;this.__zwyPreedit="";this.__zwyComposing=!1;this.engineId!=null&&this.setCandidateWindowProperties(this.engineId,{visible:!1}).catch(()=>{});return await new Promise((p,w)=>{chrome.input.ime.commitText({contextID:h,text:cStr},this.imeCallDone("commitText",p,w))}),await this.invalidateCandidateCache(),!0}return!1}';
+const commitNew = ';if(l){const h=t.contextID;const cStr=__zwyHandleCommit(l.text,h,this.__zwyPairPunct!==!1);if(!cStr){this.__zwyPreedit="";this.__zwyComposing=!1;if(!this.preeditEmpty){this.preeditEmpty=!0;try{chrome.input.ime.setComposition({contextID:h,cursor:0,selectionStart:0,selectionEnd:0,text:""},()=>{})}catch(e){}}this.engineId!=null&&this.setCandidateWindowProperties(this.engineId,{visible:!1}).catch(()=>{});return await this.invalidateCandidateCache(),!0;}this.__zwyPreedit="";this.__zwyComposing=!1;this.preeditEmpty=!0;this.engineId!=null&&this.setCandidateWindowProperties(this.engineId,{visible:!1}).catch(()=>{});return await new Promise((p,w)=>{chrome.input.ime.commitText({contextID:h,text:cStr},this.imeCallDone("commitText",p,w))}),await this.invalidateCandidateCache(),!0}return!1}';
 if (bg.includes(commitOld)) {
   bg = bg.replace(commitOld, commitNew);
   console.log('1h pair punctuation commit patched');
@@ -238,7 +246,7 @@ if (bg.includes(postProcOld)) {
 // keep the inline composition empty when enabled (settings.pinyinInWindow).
 const compAnchor = 'setComposition(n){return new Promise((t,s)=>{';
 if (bg.split(compAnchor).length - 1 !== 1) { console.error('ABORT: setComposition anchor not found/unique'); process.exit(1); }
-bg = bg.replace(compAnchor, 'setComposition(n){if(this.__zwyPinyinWindow&&n){this.__zwyPreedit=n.text||"";if(n.text)n={contextID:n.contextID,cursor:0,selectionStart:0,selectionEnd:0,text:""}}return new Promise((t,s)=>{');
+bg = bg.replace(compAnchor, 'setComposition(n){if(this.__zwyPinyinWindow&&n){this.__zwyPreedit=n.text||"";if(n.text)n={contextID:n.contextID,cursor:1,selectionStart:0,selectionEnd:0,text:"\\u200B"}}this.__zwyComposing=Boolean(this.__zwyPreedit&&this.__zwyPreedit.length>0||(n&&n.text&&n.text.length>0));return new Promise((t,s)=>{');
 
 write('background.js', bg);
 
@@ -285,7 +293,7 @@ fs.writeFileSync(path.join(dir, 'zwy-panel.js'), fs.readFileSync(jsPath, 'utf8')
 // 2.5 version stamp
 const manPath = path.join(dir, 'manifest.json');
 const man = JSON.parse(fs.readFileSync(manPath, 'utf8'));
-man.version = '1.0.9';
+man.version = '1.0.10';
 man.author = '78660';
 fs.writeFileSync(manPath, JSON.stringify(man, null, 2));
 
